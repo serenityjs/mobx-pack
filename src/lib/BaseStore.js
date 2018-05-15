@@ -47,26 +47,58 @@ export default class BaseStore {
   }
 
   start(initiatorId, context) {
-    if (context) {
+    let result;
+    if (context && context.binder && context.serviceStarter) {
       this.binder = context.binder;
       this.serviceStarter = context.serviceStarter;
     }
     const waitFor = this.serviceStarter.waitFor(this);
 
-    return waitFor
-      ?
-      new Promise((resolve, reject) => waitFor.then(() => {
+    if (context && context.syncStart) {
+      result = this.startDoSync(initiatorId) ? Promise.resolve() : Promise.reject();
+    } else if (waitFor) {
+      result = new Promise((resolve, reject) => waitFor.then(() => {
         this.startDo(initiatorId, this.serviceStarter)
           .then(() => resolve())
           .catch(error => reject(error));
-      }))
-      :
-      this.startDo(initiatorId, this.serviceStarter);
+      }));
+    } else {
+      result = this.startDo(initiatorId, this.serviceStarter);
+    }
+
+    return result;
+  }
+
+  startDoSync(initiatorId) {
+    const starting = this.alreadyStarting;
+    this.alreadyStarting = true;
+    let result = true;
+
+    if (this.serviceStatus !== STATUS_SERVICE_SLEEP &&
+      this.serviceStatus !== STATUS_SERVICE_STOPPED) {
+      console.log(`Start service "${protoName(this)}" error. 
+                Wrong status "${this.serviceStatus}". Initiator - "${initiatorId}"`);
+      result = false;
+    } else if (!initiatorId) {
+      console.log(`Start service "${protoName(this)}" error. No initiator id.`);
+      result = false;
+    } else if (!starting) {
+      if (this.onStart()) {
+        // auto bind
+        if (this.getConfig().autoBind !== false) {
+          this.bindApp();
+        }
+
+        this.initiators.push(initiatorId);
+        this.setServiceStatus(STATUS_SERVICE_STARTED);
+      }
+    }
+
+    return result;
   }
 
   startDo(initiatorId) {
     const starting = this.alreadyStarting;
-
     this.alreadyStarting = true;
 
     return starting ?
