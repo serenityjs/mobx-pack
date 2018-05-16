@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { each } from 'lodash';
 
 export default class ServiceStarter {
   stratedServices = {};
@@ -13,14 +13,17 @@ export default class ServiceStarter {
     this.processExpected(service);
   }
 
+
   waitFor(service) {
     let result = false;
     const conf = service.getConfig();
     let promises;
     let depsError;
 
-    if (conf.waitFor && conf.waitFor.length) {
-      depsError = this.chekDeps(conf.bindAs, conf.waitFor, this.waiters);
+    const waitForList = this.getWaitForList(conf.importData);
+
+    if ((typeof conf.waitFor === 'undefined' || conf.waitFor === true) && waitForList.length) {
+      depsError = this.chekDeps(conf.bindAs, waitForList, this.waiters);
 
       if (!depsError) {
         promises = this.processWaiting(service);
@@ -33,11 +36,36 @@ export default class ServiceStarter {
     return result;
   }
 
+  getWaitForList(importData) {
+    const keys = {};
+    const waitForList = [];
+    each(importData, (value, key) => {
+      if (!keys[key]) {
+        waitForList.push(key);
+      }
+      keys[key] = 1;
+    });
+    return waitForList;
+  }
+
+  getNotStartedServices(service){
+    const conf = service.getConfig();
+    const waitForList = this.getWaitForList(conf.importData);
+    const result = [];
+    waitForList.forEach((item) => {
+      if (!this.stratedServices[item]) {
+        result.push(item);
+      }
+    });
+    return result.length ? result : null;
+  }
+
   processWaiting(service) {
     const conf = service.getConfig();
     let result = false;
+    const waitForList = this.getWaitForList(conf.importData);
 
-    conf.waitFor.forEach((item) => {
+    waitForList.forEach((item) => {
       if (!this.stratedServices[item]) {
         if (!result) {
           result = [];
@@ -91,7 +119,7 @@ export default class ServiceStarter {
     const hash = {};
 
     if (waitFor.length) {
-      _.each(waiters, (data, service) => {
+      each(waiters, (data, service) => {
         data.forEach((item) => {
           const conf = item.waiterService.getConfig();
           const waiterName = conf.bindAs;
@@ -112,7 +140,7 @@ export default class ServiceStarter {
       });
     }
 
-    _.each(hash, (data, point) => {
+    each(hash, (data, point) => {
       const error = this.goByChain(hash, point, point, chain);
       if (error) {
         result = error;

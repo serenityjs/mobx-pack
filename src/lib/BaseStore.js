@@ -35,7 +35,6 @@ export default class BaseStore {
   constructor(context) {
     if (context) {
       this.binder = context.binder;
-      this.serviceStarter = context.serviceStarter;
     }
   }
 
@@ -48,23 +47,31 @@ export default class BaseStore {
 
   start(initiatorId, context) {
     let result;
-    if (context && context.binder && context.serviceStarter) {
+    if (context && context.binder) {
       this.binder = context.binder;
-      this.serviceStarter = context.serviceStarter;
     }
-    const waitFor = this.serviceStarter.waitFor(this);
+    const waitFor = this.binder.serviceStarter.waitFor(this);
 
     if (context && context.syncStart) {
       result = this.startDoSync(initiatorId) ? Promise.resolve() : Promise.reject();
     } else if (waitFor) {
       result = new Promise((resolve, reject) => waitFor.then(() => {
-        this.startDo(initiatorId, this.serviceStarter)
+        this.startDo(initiatorId)
           .then(() => resolve())
           .catch(error => reject(error));
       }));
     } else {
-      result = this.startDo(initiatorId, this.serviceStarter);
+      result = this.startDo(initiatorId);
     }
+
+    setTimeout(() => {
+      if (this.serviceStatus !== STATUS_SERVICE_STARTED) {
+        const notStartedService = this.binder.serviceStarter.getNotStartedServices(this);
+        console.error(`Start service "${protoName(this)}" timeout.${notStartedService ?
+          `Required services not started: ${notStartedService}.` : ''}`);
+      }
+    }, 1000);
+
 
     return result;
   }
@@ -76,11 +83,11 @@ export default class BaseStore {
 
     if (this.serviceStatus !== STATUS_SERVICE_SLEEP &&
       this.serviceStatus !== STATUS_SERVICE_STOPPED) {
-      console.log(`Start service "${protoName(this)}" error. 
+      console.error(`Start service "${protoName(this)}" error. 
                 Wrong status "${this.serviceStatus}". Initiator - "${initiatorId}"`);
       result = false;
     } else if (!initiatorId) {
-      console.log(`Start service "${protoName(this)}" error. No initiator id.`);
+      console.error(`Start service "${protoName(this)}" error. No initiator id.`);
       result = false;
     } else if (!starting) {
       if (this.onStart()) {
@@ -138,8 +145,8 @@ export default class BaseStore {
   }
 
   startOk(resolve) {
-    if (this.serviceStarter) {
-      this.serviceStarter.register(this);
+    if (this.binder.serviceStarter) {
+      this.binder.serviceStarter.register(this);
     }
 
     resolve();

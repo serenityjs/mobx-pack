@@ -1,10 +1,12 @@
 import _ from 'lodash';
 import { toJS } from 'mobx';
 import { protoName } from './util';
+import ServiceStarter from './ServiceStarter';
+
 
 class Binder {
   stores = {};
-
+  serviceStarter = new ServiceStarter();
   bind(store) {
     const config = store.getConfig();
     const bindAs = config.bindAs;

@@ -19,7 +19,6 @@ export class PriceService extends BaseStore {
       bidPrice: 1,
       askPrice: 1,
     },
-    waitFor: [ASSET_SERVICE],
   };
 
   api = {};
