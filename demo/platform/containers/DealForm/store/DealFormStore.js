@@ -53,20 +53,6 @@ export default class DealFormStore extends BaseStore {
 
   onStart() {
     this.initTimer();
-    this.addObserve(
-        reaction(
-            () => {
-
-                return this.bidPrice;
-            },
-            (bidPrice) => {
-
-              console.log(['bidPrice', bidPrice]);
-
-            },
-        ),
-    );
-
     return true;
   }
   initRecharge() {

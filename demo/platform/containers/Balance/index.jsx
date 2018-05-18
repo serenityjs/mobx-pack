@@ -13,6 +13,7 @@ export default Connector(
       return new BalanceStore(context);
     },
     helper(store) {
+      console.log(['helper', store, store.isRecharge]);
       return {
         balance: balanceService.balance,
         isRecharge: store.isRecharge,
