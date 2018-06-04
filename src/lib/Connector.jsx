@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { observer } from 'mobx-react';
 import { each, forIn } from 'lodash';
 import { getUid, protoName } from './util.js';
+import { STATUS_SERVICE_STOPPED } from './BaseStore.js';
 
 
 function ConnectorF(Component, opt = {}) {
@@ -36,9 +37,7 @@ function ConnectorF(Component, opt = {}) {
       this.componentId = `${Component.name}_${getUid()}`;
 
       if (this.options.services.length) {
-        Promise.all(
-          this.options.services.map(service => service.start(this.componentId)),
-        ).then(() => {
+        Promise.all(this.options.services.map(service => service.start(this.componentId))).then(() => {
           this.initComponent();
 
           if (this.options.wairForServices) {
@@ -54,7 +53,11 @@ function ConnectorF(Component, opt = {}) {
 
     componentWillUnmount() {
       if (this.store && this.store.destroy && this.storeInitializator) {
-        this.store.destroy();
+        this.store.stop(this.componentId).then(() => {
+          if (this.store.serviceStatus === STATUS_SERVICE_STOPPED) {
+            this.store.destroy();
+          }
+        });
       }
 
       if (this.options.services) {
@@ -65,6 +68,7 @@ function ConnectorF(Component, opt = {}) {
         });
       }
     }
+
 
     initComponent() {
       this.servicesLoaded = true;
